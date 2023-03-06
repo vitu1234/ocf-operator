@@ -1,0 +1,27 @@
+# permissions for end users to view ocfdevices.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: ocfdevice-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: ocf-operator
+    app.kubernetes.io/part-of: ocf-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: ocfdevice-viewer-role
+rules:
+- apiGroups:
+  - iot.iot.dev
+  resources:
+  - ocfdevices
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - iot.iot.dev
+  resources:
+  - ocfdevices/status
+  verbs:
+  - get

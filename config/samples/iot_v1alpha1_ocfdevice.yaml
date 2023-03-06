@@ -1,0 +1,16 @@
+apiVersion: iot.iot.dev/v1alpha1
+kind: OCFDevice
+metadata:
+  labels:
+    app.kubernetes.io/name: ocfdevice
+    app.kubernetes.io/instance: ocfdevice-sample
+    app.kubernetes.io/part-of: ocf-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: ocf-operator
+  name: ocfdevice-sample
+spec:
+  id: "idsample"
+  name: "ocdfname"
+  owned: false
+  ownerId: ""
+  
