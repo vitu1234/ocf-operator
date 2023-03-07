@@ -58,6 +58,44 @@ spec:
             type: object
           status:
             description: OCFDeviceStatus defines the observed state of OCFDevice
+            properties:
+              options:
+                description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
+                  of cluster Important: Run "make" to regenerate code after modifying
+                  this file'
+                items:
+                  properties:
+                    certIdentity:
+                      type: string
+                    discoveryTimeout:
+                      description: A Duration represents the elapsed time between
+                        two instants as an int64 nanosecond count. The representation
+                        limits the largest representable duration to approximately
+                        290 years.
+                      format: int64
+                      type: integer
+                    identityCert:
+                      type: string
+                    identityIntermediateCA:
+                      type: string
+                    identityIntermediateCAKey:
+                      type: string
+                    identityKey:
+                      type: string
+                    identityTrustCA:
+                      type: string
+                    identityTrustCAKey:
+                      type: string
+                    mfgCert:
+                      type: string
+                    mfgKey:
+                      type: string
+                    mfgTrustCA:
+                      type: string
+                    mfgTrustCAKey:
+                      type: string
+                  type: object
+                type: array
             type: object
         type: object
     served: true

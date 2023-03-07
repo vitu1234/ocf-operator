@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -30,7 +31,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"github.com/jessevdk/go-flags"
+	Options "github.com/vitu1234/ocf-operator/api/v1alpha1"
 	iotv1alpha1 "github.com/vitu1234/ocf-operator/api/v1alpha1"
+	OCFClient "github.com/vitu1234/ocf-operator/controllers/ocfclient"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -89,41 +93,84 @@ func (r *OCFDeviceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 func (r *OCFDeviceReconciler) PeriodicReconcile() {
 	// Handle periodic reconciliation logic here
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(8 * time.Second)
 	defer ticker.Stop()
+
+	//OCF DEVICE DISCOVERY HERE
+	var opts Options.Options
+	parser := flags.NewParser(&opts, flags.Default)
+	_, err := parser.Parse()
+	if err != nil {
+		fmt.Println("Parsing command options has failed : " + err.Error())
+	}
+
+	OCFClient.ReadCommandOptions(opts)
+
+	fmt.Println("Discover OCFDevice")
+	discoveryTimeout := opts.DiscoveryTimeout
+	if discoveryTimeout <= 0 {
+		discoveryTimeout = time.Second * 5
+	}
+
+	// Create OCF Client
+	client := OCFClient.OCFClient{}
+	err = client.Initialize()
+	if err != nil {
+		fmt.Println("OCF Client has failed to initialize : " + err.Error())
+	}
 
 	for {
 		select {
 		case <-ticker.C:
-			fmt.Printf("Periodic reconcile at %v", time.Now().Format("15:04:05"))
+			fmt.Printf("Periodic reconcile at %v \n", time.Now().Format("15:04:05"))
 			// Perform periodic reconciliation logic here
+
+			res, err := client.Discover(discoveryTimeout)
+			if err != nil {
+				fmt.Printf("Discovering devices has failed : %s\n", err.Error())
+			}
+			// Define a slice of Device struct to hold the JSON array
+			var raw_devices []RawOCFDevice
+
+			// Unmarshal the JSON array to the slice
+			err = json.Unmarshal([]byte(res), &raw_devices)
+			if err != nil {
+				panic(err)
+			}
+
+			fmt.Printf("Discovered a total of %d Devices: \n", len(raw_devices))
 
 			// Define the OCFDevice object
 			ocfDevice := &iotv1alpha1.OCFDevice{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "ocfdevice-sample",
+					Name:      raw_devices[0].ID,
 					Namespace: "default",
 				},
 				Spec: iotv1alpha1.OCFDeviceSpec{
-					Id:   "idsample",
-					Name: "ocdfname",
+					Id:      raw_devices[0].ID,
+					Name:    raw_devices[0].Name,
+					Owned:   raw_devices[0].Owned,
+					OwnerID: raw_devices[0].OwnerID,
 				},
 			}
 
 			// Check if the OCFDevice object already exists
 			found := &iotv1alpha1.OCFDevice{}
-			err := r.Get(context.Background(), types.NamespacedName{Name: "ocfdevice-sample", Namespace: "default"}, found)
+			err = r.Get(context.Background(), types.NamespacedName{Name: raw_devices[0].Name, Namespace: "default"}, found)
 			if err != nil && errors.IsNotFound(err) {
 				// Create the OCFDevice object if it does not exist
 				if err = r.Create(context.Background(), ocfDevice); err != nil {
-					fmt.Printf("failed to create OCFDevice: %s\n", err.Error())
-					return
+					fmt.Printf("failed to create OCFDevice: %s\n, skipping", err.Error())
+					// return
 				}
 			} else if err != nil {
 				// Handle any other errors that may occur
-				fmt.Printf("failed to get OCFDevice: %s\n", err.Error())
-				return
+				fmt.Printf("failed to get OCFDevice: %s\n, skipping", err.Error())
+				// return
 			}
+
+			fmt.Printf("Device Registered \n")
+			// return
 
 		}
 	}
@@ -156,3 +203,20 @@ func (r *OCFDeviceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // func (r *OCFDeviceReconciler) GetAll(o client.Client)[] ctrl.Request{
 
 // }
+
+// structure of a discovered OCF device
+type RawOCFDevice struct {
+	Details struct {
+		DI   string   `json:"di"`
+		RT   []string `json:"rt"`
+		IF   []string `json:"if"`
+		Name string   `json:"n"`
+		DMN  *string  `json:"dmn"`
+		DMNO string   `json:"dmno"`
+		PIID string   `json:"piid"`
+	} `json:"details"`
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Owned   bool   `json:"owned"`
+	OwnerID string `json:"ownerID"`
+}
