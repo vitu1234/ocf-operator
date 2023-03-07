@@ -1,0 +1,57 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.11.1
+  creationTimestamp: null
+  name: ocfdeviceboardings.iot.iot.dev
+spec:
+  group: iot.iot.dev
+  names:
+    kind: OCFDeviceBoarding
+    listKind: OCFDeviceBoardingList
+    plural: ocfdeviceboardings
+    singular: ocfdeviceboarding
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: OCFDeviceBoarding is the Schema for the ocfdeviceboardings API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: OCFDeviceBoardingSpec defines the desired state of OCFDeviceBoarding
+            properties:
+              discoveryTimeout:
+                description: This is the time taken in seconds to scan for OCF devices
+                  on the network
+                type: integer
+              onboardMode:
+                description: Whether to onboard an OCF device on the network automatically
+                  or not
+                type: string
+            required:
+            - discoveryTimeout
+            - onboardMode
+            type: object
+          status:
+            description: OCFDeviceBoardingStatus defines the observed state of OCFDeviceBoarding
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

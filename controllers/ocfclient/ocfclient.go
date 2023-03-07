@@ -696,8 +696,6 @@ func NewSecureClient() (*local.Client, error) {
 
 	client, err := local.NewClientFromConfig(&cfg, &setupSecureClient, nil)
 
-	fmt.Printf("djkdhjkdh %s\n", err)
-
 	if err != nil {
 		return nil, err
 	}

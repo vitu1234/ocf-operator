@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	logging "log"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -60,33 +61,9 @@ type OCFDeviceReconciler struct {
 func (r *OCFDeviceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
-	fmt.Println("NORMAL RECONCILER")
+	fmt.Println("OCFDevice controller")
 
 	// TODO(user): your logic here //maybe get things which get changed
-	// var ocfdevice v1alpha1.OCFDevice
-	// r.Client.Get(ctx, req.NamespacedName, &ocfdevice)
-
-	// var ocfdevicelist v1alpha1.OCFDeviceList
-	// r.Client.List(ctx, &ocfdevicelist)
-	// for i, v := range ocfdevicelist.Items {
-	// 	fmt.Printf(v.GetName() + "")
-	// 	fmt.Printf(string(i))
-	// }
-
-	// device := &v1alpha1.OCFDevice{
-	// 	ObjectMeta: metav1.ObjectMeta{
-	// 		Name: "device1",
-	// 	},
-	// 	Spec: v1alpha1.OCFDeviceSpec{
-	// 		Id:      "sdhdhgd",
-	// 		Name:    "name-here",
-	// 		Owned:   false,
-	// 		OwnerID: "djkhdkjhd",
-	// 	},
-	// }
-
-	// create_device := r.Client.Create(ctx, device)
-	// fmt.Println(create_device.Error())
 
 	return ctrl.Result{}, nil
 }
@@ -96,17 +73,19 @@ func (r *OCFDeviceReconciler) PeriodicReconcile() {
 	ticker := time.NewTicker(8 * time.Second)
 	defer ticker.Stop()
 
+	//get ocfdeviceboarding resource and get the set values
+
 	//OCF DEVICE DISCOVERY HERE
 	var opts Options.Options
 	parser := flags.NewParser(&opts, flags.Default)
 	_, err := parser.Parse()
 	if err != nil {
-		fmt.Println("Parsing command options has failed : " + err.Error())
+		logging.Println("Parsing command options has failed : " + err.Error())
 	}
 
 	OCFClient.ReadCommandOptions(opts)
 
-	fmt.Println("Discover OCFDevice")
+	logging.Println("Discover OCFDevice")
 	discoveryTimeout := opts.DiscoveryTimeout
 	if discoveryTimeout <= 0 {
 		discoveryTimeout = time.Second * 5
@@ -125,6 +104,19 @@ func (r *OCFDeviceReconciler) PeriodicReconcile() {
 			fmt.Printf("Periodic reconcile at %v \n", time.Now().Format("15:04:05"))
 			// Perform periodic reconciliation logic here
 
+			// get ocfdeviceboarding resource and get the set values
+			onboardingInstances := &iotv1alpha1.OCFDeviceBoardingList{}
+
+			err := r.Client.List(context.Background(), onboardingInstances)
+			if err != nil {
+				logging.Printf("Error getting OCFDeviceBoardingList: %s \n", err)
+			}
+			fmt.Println("onboardingInstances")
+			fmt.Print(onboardingInstances)
+			for _, instance := range onboardingInstances.Items {
+				fmt.Println(instance)
+			}
+
 			res, err := client.Discover(discoveryTimeout)
 			if err != nil {
 				fmt.Printf("Discovering devices has failed : %s\n", err.Error())
@@ -138,7 +130,7 @@ func (r *OCFDeviceReconciler) PeriodicReconcile() {
 				panic(err)
 			}
 
-			fmt.Printf("Discovered a total of %d Devices: \n", len(raw_devices))
+			logging.Printf("Discovered a total of %d Devices: \n", len(raw_devices))
 
 			// Define the OCFDevice object
 			ocfDevice := &iotv1alpha1.OCFDevice{
@@ -169,7 +161,7 @@ func (r *OCFDeviceReconciler) PeriodicReconcile() {
 				// return
 			}
 
-			fmt.Printf("Device Registered \n")
+			logging.Println("Device Registered ")
 			// return
 
 		}

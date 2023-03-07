@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/onsi/ginkgo/v2 v2.6.0
 	github.com/onsi/gomega v1.24.1
+	github.com/plgd-dev/kit/v2 v2.0.0-20211006190727-057b33161b90
 	k8s.io/apimachinery v0.26.1
 	k8s.io/client-go v0.26.1
 	sigs.k8s.io/controller-runtime v0.14.5
@@ -24,7 +25,6 @@ require (
 	github.com/pion/transport/v2 v2.0.0 // indirect
 	github.com/pion/udp v0.1.2 // indirect
 	github.com/plgd-dev/go-coap/v3 v3.1.2-0.20230202152709-d4fc0ce1262e // indirect
-	github.com/plgd-dev/kit/v2 v2.0.0-20211006190727-057b33161b90 // indirect
 	github.com/ugorji/go/codec v1.2.8 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	golang.org/x/crypto v0.5.0 // indirect

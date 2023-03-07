@@ -1,0 +1,14 @@
+apiVersion: iot.iot.dev/v1alpha1
+kind: OCFDeviceBoarding
+metadata:
+  labels:
+    app.kubernetes.io/name: ocfdeviceboarding
+    app.kubernetes.io/instance: ocfdeviceboarding-setting
+    app.kubernetes.io/part-of: ocf-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: ocf-operator
+  name: ocfdeviceboarding-sample
+spec:
+  discoveryTimeout: 6
+  onboardMode: "Auto"
+  # TODO(user): Add fields here
