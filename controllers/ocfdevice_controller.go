@@ -33,7 +33,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/jessevdk/go-flags"
-	Options "github.com/vitu1234/ocf-operator/api/v1alpha1"
 	iotv1alpha1 "github.com/vitu1234/ocf-operator/api/v1alpha1"
 	OCFClient "github.com/vitu1234/ocf-operator/controllers/ocfclient"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -76,7 +75,7 @@ func (r *OCFDeviceReconciler) PeriodicReconcile() {
 	//get ocfdeviceboarding resource and get the set values
 
 	//OCF DEVICE DISCOVERY HERE
-	var opts Options.Options
+	var opts iotv1alpha1.Options
 	parser := flags.NewParser(&opts, flags.Default)
 	_, err := parser.Parse()
 	if err != nil {
@@ -85,15 +84,9 @@ func (r *OCFDeviceReconciler) PeriodicReconcile() {
 
 	OCFClient.ReadCommandOptions(opts)
 
-	logging.Println("Discover OCFDevice")
-	discoveryTimeout := opts.DiscoveryTimeout
-	if discoveryTimeout <= 0 {
-		discoveryTimeout = time.Second * 5
-	}
-
 	// Create OCF Client
-	client := OCFClient.OCFClient{}
-	err = client.Initialize()
+	ocf_client := OCFClient.OCFClient{}
+	err = ocf_client.Initialize()
 	if err != nil {
 		fmt.Println("OCF Client has failed to initialize : " + err.Error())
 	}
@@ -106,64 +99,89 @@ func (r *OCFDeviceReconciler) PeriodicReconcile() {
 
 			// get ocfdeviceboarding resource and get the set values
 			onboardingInstances := &iotv1alpha1.OCFDeviceBoardingList{}
+			listOpts := []client.ListOption{
+				client.InNamespace("default"), // Replace with the namespace you want to list resources from
+			}
 
-			err := r.Client.List(context.Background(), onboardingInstances)
+			// err := r.Client.List(context.Background(), onboardingInstances, listOpts...)
+			err := r.Client.List(context.Background(), onboardingInstances, listOpts...)
 			if err != nil {
 				logging.Printf("Error getting OCFDeviceBoardingList: %s \n", err)
 			}
-			fmt.Println("onboardingInstances")
-			fmt.Print(onboardingInstances)
+			var device_instance iotv1alpha1.OCFDeviceBoarding
 			for _, instance := range onboardingInstances.Items {
-				fmt.Println(instance)
+				device_instance = instance
 			}
 
-			res, err := client.Discover(discoveryTimeout)
-			if err != nil {
-				fmt.Printf("Discovering devices has failed : %s\n", err.Error())
-			}
-			// Define a slice of Device struct to hold the JSON array
-			var raw_devices []RawOCFDevice
-
-			// Unmarshal the JSON array to the slice
-			err = json.Unmarshal([]byte(res), &raw_devices)
-			if err != nil {
-				panic(err)
-			}
-
-			logging.Printf("Discovered a total of %d Devices: \n", len(raw_devices))
-
-			// Define the OCFDevice object
-			ocfDevice := &iotv1alpha1.OCFDevice{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      raw_devices[0].ID,
-					Namespace: "default",
-				},
-				Spec: iotv1alpha1.OCFDeviceSpec{
-					Id:      raw_devices[0].ID,
-					Name:    raw_devices[0].Name,
-					Owned:   raw_devices[0].Owned,
-					OwnerID: raw_devices[0].OwnerID,
-				},
-			}
-
-			// Check if the OCFDevice object already exists
-			found := &iotv1alpha1.OCFDevice{}
-			err = r.Get(context.Background(), types.NamespacedName{Name: raw_devices[0].Name, Namespace: "default"}, found)
-			if err != nil && errors.IsNotFound(err) {
-				// Create the OCFDevice object if it does not exist
-				if err = r.Create(context.Background(), ocfDevice); err != nil {
-					fmt.Printf("failed to create OCFDevice: %s\n, skipping", err.Error())
-					// return
+			//discover devices only if the Onboarding instance is set
+			if len(onboardingInstances.Items) > 0 {
+				discoveryTimeout := opts.DiscoveryTimeout
+				if discoveryTimeout <= 0 {
+					discoveryTimeout = time.Second * time.Duration(device_instance.Spec.DiscoveryTimeout)
 				}
-			} else if err != nil {
-				// Handle any other errors that may occur
-				fmt.Printf("failed to get OCFDevice: %s\n, skipping", err.Error())
-				// return
+
+				res, err := ocf_client.Discover(discoveryTimeout)
+				if err != nil {
+					fmt.Printf("Discovering devices has failed : %s\n", err.Error())
+				}
+
+				// Define a slice of Device struct to hold the JSON array
+				var raw_devices []RawOCFDevice
+
+				// Unmarshal the JSON array to the slice
+				err = json.Unmarshal([]byte(res), &raw_devices)
+				if err != nil {
+					panic(err)
+				}
+
+				//check if Onboarding is Manual or Auto
+				if device_instance.Spec.OnBoardMode == "Auto" {
+
+					if len(raw_devices) > 0 {
+
+						// Define the OCFDevice object
+						ocfDevice := &iotv1alpha1.OCFDevice{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      raw_devices[0].ID,
+								Namespace: "default",
+							},
+							Spec: iotv1alpha1.OCFDeviceSpec{
+								Id:      raw_devices[0].ID,
+								Name:    raw_devices[0].Name,
+								Owned:   raw_devices[0].Owned,
+								OwnerID: raw_devices[0].OwnerID,
+							},
+						}
+
+						// Check if the OCFDevice object already exists
+						found := &iotv1alpha1.OCFDevice{}
+						err = r.Get(context.Background(), types.NamespacedName{Name: raw_devices[0].Name, Namespace: "default"}, found)
+						if err != nil && errors.IsNotFound(err) {
+							// Create the OCFDevice object if it does not exist
+							err = r.Create(context.Background(), ocfDevice)
+							if err != nil {
+								logging.Printf("failed to create OCFDevice: %s\n, skipping", err.Error())
+								// return
+							} else {
+								//device created
+							}
+						} else if err != nil {
+							// Handle any other errors that may occur
+							logging.Printf("failed to get OCFDevice: %s\n, skipping", err.Error())
+							// return
+						}
+
+						logging.Println("Device Registered ")
+						// return
+					} else {
+						logging.Println("No OCFDevices found on the network")
+					}
+				} else {
+					logging.Println("OCFDeviceBoarding set to Manual")
+				}
+			} else {
+				logging.Println("No need to trigger device discovery, OCFDeviceBoarding not set")
 			}
-
-			logging.Println("Device Registered ")
-			// return
-
 		}
 	}
 
