@@ -163,7 +163,25 @@ func (r *OCFDeviceReconciler) PeriodicReconcile() {
 								logging.Printf("failed to create OCFDevice: %s\n, skipping", err.Error())
 								// return
 							} else {
-								//device created
+								//device created | own it and register its resources in K8s
+								ocf_client.OwnDevice(raw_devices[0].ID)
+								links_resources, err := ocf_client.GetResources(raw_devices[0].ID)
+								if err != nil {
+									logging.Printf("Failed to get device resources, DeviceID: %s | Error: %s \n", raw_devices[0].ID, err.Error())
+								}
+
+								//get the resources 1 by 1 and register
+								var raw_device_resources []RawOCFDeviceResources
+
+								err = json.Unmarshal([]byte(links_resources), &raw_device_resources)
+								if err != nil {
+									logging.Printf("Processing device resources to json failed, DeviceID: %s | Error: %s \n ", raw_devices[0].ID, err.Error())
+								}
+
+								for _, d := range raw_device_resources {
+									fmt.Println(d.Href)
+								}
+
 							}
 						} else if err != nil {
 							// Handle any other errors that may occur
@@ -229,4 +247,9 @@ type RawOCFDevice struct {
 	Name    string `json:"name"`
 	Owned   bool   `json:"owned"`
 	OwnerID string `json:"ownerID"`
+}
+
+// structure of raw device resources
+type RawOCFDeviceResources struct {
+	Href string `json:"href"`
 }
