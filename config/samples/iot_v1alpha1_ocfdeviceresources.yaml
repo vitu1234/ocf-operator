@@ -1,0 +1,17 @@
+apiVersion: iot.iot.dev/v1alpha1
+kind: OCFDeviceResources
+metadata:
+  labels:
+    app.kubernetes.io/name: ocfdeviceresources
+    app.kubernetes.io/instance: ocfdeviceresources-sample
+    app.kubernetes.io/part-of: ocf-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: ocf-operator
+  name: ocfdeviceresources-sample
+spec:
+  deviceId: "jdhdkjhdjhkgd"
+  properties:
+    - name: "temperature"
+      value: "10"
+    - name: "lights1"
+      value: true
