@@ -35,7 +35,7 @@ type OCFDeviceResourcesSpec struct {
 
 type OCFDeviceResourceProperties struct {
 	Name        string `json:"name,omitempty"` //this is the href for the resource
-	Value       bool   `json:"value,omitempty"`
+	Value       *bool  `json:"value,omitempty"`
 	Units       string `json:"units,omitempty"`
 	Temperature string `json:"temperature,omitempty"`
 }

@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	logging "log"
-	"reflect"
 	"strconv"
 	"time"
 
@@ -186,7 +185,6 @@ func (r *OCFDeviceReconciler) PeriodicReconcile() {
 
 								//get the device resources and store for this device
 								for _, d := range raw_device_resources {
-									logging.Println("For loop of raw_device_resources")
 
 									resource_properties, err := ocf_client.GetResource(raw_devices[0].ID, d.Href)
 									if err != nil {
@@ -205,8 +203,17 @@ func (r *OCFDeviceReconciler) PeriodicReconcile() {
 									newProperty := iotv1alpha1.OCFDeviceResourceProperties{}
 
 									newProperty.Name = d.Href
-									if reflect.ValueOf(raw_device_resource_properties).FieldByName("Value").IsValid() {
-										newProperty.Value = raw_device_resource_properties.Value
+
+									if raw_device_resource_properties.Value != nil {
+
+										if strconv.FormatBool(*raw_device_resource_properties.Value) == "true" {
+											newProperty.Value = raw_device_resource_properties.Value
+										} else if strconv.FormatBool(*raw_device_resource_properties.Value) == "false" {
+											newProperty.Value = raw_device_resource_properties.Value
+										} else {
+											newProperty.Value = raw_device_resource_properties.Value
+										}
+
 									}
 
 									if raw_device_resource_properties.Units != "" {
@@ -320,7 +327,7 @@ type RawOCFDeviceResourceProperties struct {
 	If          []string `json:"if"`
 	Rt          []string `json:"rt"`
 	Name        string   `json:"name"`
-	Value       bool     `json:"value"`
+	Value       *bool    `json:"value"`
 	Units       string   `json:"units"`
 	Temperature float64  `json:"temperature"`
 }
