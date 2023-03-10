@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"time"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -45,6 +47,7 @@ type ResourceType struct {
 type OCFDeviceStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	Options []Options `json:"options,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -66,6 +69,23 @@ type OCFDeviceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []OCFDevice `json:"items"`
+}
+
+type Options struct {
+	CertIdentity     string        `json:"certIdentity,omitempty"`
+	DiscoveryTimeout time.Duration `json:"discoveryTimeout,omitempty"`
+
+	MfgCert       string `json:"mfgCert,omitempty"`
+	MfgKey        string `json:"mfgKey,omitempty"`
+	MfgTrustCA    string `json:"mfgTrustCA,omitempty"`
+	MfgTrustCAKey string `json:"mfgTrustCAKey,omitempty"`
+
+	IdentityCert              string `json:"identityCert,omitempty"`
+	IdentityKey               string `json:"identityKey,omitempty"`
+	IdentityIntermediateCA    string `json:"identityIntermediateCA,omitempty"`
+	IdentityIntermediateCAKey string `json:"identityIntermediateCAKey,omitempty"`
+	IdentityTrustCA           string `json:"identityTrustCA,omitempty"`
+	IdentityTrustCAKey        string `json:"identityTrustCAKey,omitempty"`
 }
 
 func init() {
