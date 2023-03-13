@@ -10,5 +10,5 @@ metadata:
   name: ocfdeviceboarding-sample
 spec:
   discoveryTimeout: 6
-  onboardMode: "Auto"
+  onboardMode: "Manual"
   # TODO(user): Add fields here

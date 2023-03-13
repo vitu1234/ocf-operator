@@ -8,9 +8,10 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: ocf-operator
   name: ocfdevice-sample
+  namespace: "default"
 spec:
-  id: "idsample"
-  name: "ocdfname"
-  owned: false
-  ownerId: ""
+  id: "0e627b7e-8374-4cc4-a622-1f8ac4c2e13c"
+  name: "CloudServerDEVICEVitu"
+  owned: true
+  ownerId: "112"
   
