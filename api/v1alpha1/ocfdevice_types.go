@@ -22,6 +22,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type OCFDeviceCurrentStatus string
+
+const (
+	OCFDeviceCreating   OCFDeviceCurrentStatus = "Creating"
+	OCFDeviceOnBoarding OCFDeviceCurrentStatus = "OnBoarding"
+	OCFDeviceDiscovery  OCFDeviceCurrentStatus = "Discovery"
+	OCFDeviceRunning    OCFDeviceCurrentStatus = "Running"
+	OCFDeviceError      OCFDeviceCurrentStatus = "Error"
+	OCFDeviceNotFound   OCFDeviceCurrentStatus = "NotFound"
+)
+
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
@@ -31,15 +42,15 @@ type OCFDeviceSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of OCFDevice. Edit ocfdevice_types.go to remove/update
-	Id      string `json:"id"`
-	Name    string `json:"name"`
+	Id      string `json:"id,omitempty"`
+	Name    string `json:"name,omitempty"`
 	Owned   bool   `json:"owned,omitempty"`
 	OwnerID string `json:"ownerId,omitempty"`
 
-	ResourceTypes []ResourceType `json:"resourceTypes,omitempty"`
+	PreferedResources []PreferedResources `json:"preferredResources,omitempty"`
 }
 
-type ResourceType struct {
+type PreferedResources struct {
 	Name string `json:"name,omitempty"`
 }
 
@@ -47,11 +58,16 @@ type ResourceType struct {
 type OCFDeviceStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	Options []Options `json:"options,omitempty"`
+	Options []Options              `json:"options,omitempty"`
+	Status  OCFDeviceCurrentStatus `json:"status,omitempty"`
+	Message string                 `json:"message,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.status`
+// +kubebuilder:printcolumn:name="Message",type=string,JSONPath=`.status.message`
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // OCFDevice is the Schema for the ocfdevices API
 type OCFDevice struct {
@@ -62,8 +78,12 @@ type OCFDevice struct {
 	Status OCFDeviceStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
-
+// +kubebuilder:object:root=true
+// +kubebuilder:resource:shortName=ocfdevice
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
+// +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.status`
+// +kubebuilder:printcolumn:name="Message",type=string,JSONPath=`.status.message`
+// +kubebuilder:subresource:status
 // OCFDeviceList contains a list of OCFDevice
 type OCFDeviceList struct {
 	metav1.TypeMeta `json:",inline"`
