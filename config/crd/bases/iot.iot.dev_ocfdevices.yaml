@@ -55,16 +55,13 @@ spec:
                 type: boolean
               ownerId:
                 type: string
-              resourceTypes:
+              preferredResources:
                 items:
                   properties:
                     name:
                       type: string
                   type: object
                 type: array
-            required:
-            - id
-            - name
             type: object
           status:
             description: OCFDeviceStatus defines the observed state of OCFDevice

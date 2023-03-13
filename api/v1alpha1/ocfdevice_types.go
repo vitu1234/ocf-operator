@@ -42,15 +42,15 @@ type OCFDeviceSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of OCFDevice. Edit ocfdevice_types.go to remove/update
-	Id      string `json:"id"`
-	Name    string `json:"name"`
+	Id      string `json:"id,omitempty"`
+	Name    string `json:"name,omitempty"`
 	Owned   bool   `json:"owned,omitempty"`
 	OwnerID string `json:"ownerId,omitempty"`
 
-	PreferedResourceTypes []PreferedResourceTypes `json:"preferredResourceTypes,omitempty"`
+	PreferedResources []PreferedResources `json:"preferredResources,omitempty"`
 }
 
-type PreferedResourceTypes struct {
+type PreferedResources struct {
 	Name string `json:"name,omitempty"`
 }
 

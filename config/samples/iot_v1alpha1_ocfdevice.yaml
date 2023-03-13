@@ -10,8 +10,10 @@ metadata:
   name: ocfdevice-sample
   namespace: "default"
 spec:
-  id: "0e627b7e-8374-4cc4-a622-1f8ac4c2e13c"
-  name: "CloudServerDEVICEVitu"
-  owned: true
-  ownerId: "112"
+  # id: "0e627b7e-8374-4cc4-a622-1f8ac4c2e13c"
+  # name: "CloudServerDEVICEVitu"
+  # owned: true
+  # ownerId: "112"
+  preferredResources:
+    - name: temperature 
   
