@@ -1,0 +1,27 @@
+apiVersion: iot.iot.dev/v1alpha1
+kind: OCFDevice
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"iot.iot.dev/v1alpha1","kind":"OCFDevice","metadata":{"annotations":{},"creationTimestamp":"2023-03-13T15:36:23Z","generation":12,"labels":{"app.kubernetes.io/created-by":"ocf-operator","app.kubernetes.io/instance":"ocfdevice-sample","app.kubernetes.io/managed-by":"kustomize","app.kubernetes.io/name":"ocfdevice","app.kubernetes.io/part-of":"ocf-operator"},"name":"ocfdevice-sample","namespace":"default","resourceVersion":"2341921","uid":"69f747ff-8740-4bd1-88cf-85808a85be01"},"spec":{"id":"2b73daab-0c93-4666-7cbd-65f2bb905e8a","name":"CloudServer","owned":false,"ownerId":"00000000-0000-0000-0000-000000000001","preferredResources":[{"name":"temperature"}]},"status":{"message":"Device registered","status":"Running"}}
+  creationTimestamp: "2023-03-13T15:36:23Z"
+  generation: 83
+  labels:
+    app.kubernetes.io/created-by: ocf-operator
+    app.kubernetes.io/instance: ocfdevice-sample
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: ocfdevice
+    app.kubernetes.io/part-of: ocf-operator
+  name: ocfdevice-sample
+  namespace: default
+  resourceVersion: "2342910"
+  uid: 69f747ff-8740-4bd1-88cf-85808a85be01
+spec:
+  id: 2b73daab-0c93-4666-7cbd-65f2bb905e8a
+  name: CloudServer
+  ownerId: 00000000-0000-0000-0000-000000000001
+  preferredResources:
+  - name: temperature
+status:
+  message: Device registered
+  status: Running

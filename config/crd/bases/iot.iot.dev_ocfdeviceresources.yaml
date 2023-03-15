@@ -9,10 +9,10 @@ metadata:
 spec:
   group: iot.iot.dev
   names:
-    kind: OCFDeviceResources
-    listKind: OCFDeviceResourcesList
+    kind: OCFDeviceResource
+    listKind: OCFDeviceResourceList
     plural: ocfdeviceresources
-    singular: ocfdeviceresources
+    singular: ocfdeviceresource
   scope: Namespaced
   versions:
   - name: v1alpha1

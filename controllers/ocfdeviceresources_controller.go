@@ -27,26 +27,26 @@ import (
 	iotv1alpha1 "github.com/vitu1234/ocf-operator/api/v1alpha1"
 )
 
-// OCFDeviceResourcesReconciler reconciles a OCFDeviceResources object
-type OCFDeviceResourcesReconciler struct {
+// OCFDeviceResourceReconciler reconciles a OCFDeviceResource object
+type OCFDeviceResourceReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=iot.iot.dev,resources=ocfdeviceresources,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=iot.iot.dev,resources=ocfdeviceresources/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=iot.iot.dev,resources=ocfdeviceresources/finalizers,verbs=update
+//+kubebuilder:rbac:groups=iot.iot.dev,resources=OCFDeviceResource,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=iot.iot.dev,resources=OCFDeviceResource/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=iot.iot.dev,resources=OCFDeviceResource/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
-// the OCFDeviceResources object against the actual cluster state, and then
+// the OCFDeviceResource object against the actual cluster state, and then
 // perform operations to make the cluster state reflect the state specified by
 // the user.
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
-func (r *OCFDeviceResourcesReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *OCFDeviceResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
 	// TODO(user): your logic here
@@ -55,8 +55,8 @@ func (r *OCFDeviceResourcesReconciler) Reconcile(ctx context.Context, req ctrl.R
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *OCFDeviceResourcesReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *OCFDeviceResourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&iotv1alpha1.OCFDeviceResources{}).
+		For(&iotv1alpha1.OCFDeviceResource{}).
 		Complete(r)
 }
