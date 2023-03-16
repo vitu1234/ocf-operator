@@ -29,7 +29,7 @@ type OCFDeviceResourceSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// DeviceID is the OCFDevice this resource belongs to
-	DeviceID   string                        `json:"deviceId"`
+	DeviceID   string                        `json:"deviceId" protobuf:"bytes,1,opt,name=deviceId"  kubebuilder:"index"`
 	Properties []OCFDeviceResourceProperties `json:"properties"`
 }
 
@@ -46,8 +46,9 @@ type OCFDeviceResourceStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="deviceId",type=string,JSONPath=`.spec.deviceId`
 
 // OCFDeviceResources is the Schema for the ocfdeviceresources API
 type OCFDeviceResource struct {
@@ -58,8 +59,11 @@ type OCFDeviceResource struct {
 	Status OCFDeviceResourceStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
-
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:scope=Namespaced
+// +kubebuilder:printcolumn:name="deviceId",type=string,JSONPath=`.spec.deviceId`
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // OCFDeviceResourcesList contains a list of OCFDeviceResources
 type OCFDeviceResourceList struct {
 	metav1.TypeMeta `json:",inline"`

@@ -15,7 +15,11 @@ spec:
     singular: ocfdeviceresource
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.deviceId
+      name: deviceId
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: OCFDeviceResources is the Schema for the ocfdeviceresources API

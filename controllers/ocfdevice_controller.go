@@ -85,6 +85,42 @@ func (r *OCFDeviceReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 		},
 	}
 
+	//register finalizers
+	// name of our custom finalizer
+	myFinalizerName := "iot.iot.v1alpha1device.dev/finalizer"
+	// examine DeletionTimestamp to determine if object is under deletion
+	if instance.ObjectMeta.DeletionTimestamp.IsZero() {
+		// The object is not being deleted, so if it does not have our finalizer,
+		// then lets add the finalizer and update the object. This is equivalent
+		// registering our finalizer.
+		if !controllerutil.ContainsFinalizer(instance, myFinalizerName) {
+			controllerutil.AddFinalizer(instance, myFinalizerName)
+			if err := r.Update(ctx, instance); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+	} else {
+		// The object is being deleted
+		if controllerutil.ContainsFinalizer(instance, myFinalizerName) {
+			// our finalizer is present, so lets handle any external dependency
+			if !r.deleteExternalResources(instance) {
+				// if fail to delete the external dependency here, return with error
+				// so that it can be retried
+				logging.Println("FAILED TO DELETE EXTRA RESOURCES")
+				return ctrl.Result{}, nil
+			}
+
+			// remove our finalizer from the list and update it.
+			controllerutil.RemoveFinalizer(instance, myFinalizerName)
+			if err := r.Update(ctx, instance); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+
+		// Stop reconciliation as the item is being deleted
+		return ctrl.Result{}, nil
+	}
+
 	if err := controllerutil.SetControllerReference(instance, ocfDevice, r.Scheme); err != nil {
 		logging.Printf("Error:  %s\n", err.Error())
 		return ctrl.Result{}, err
@@ -381,7 +417,10 @@ func (r *OCFDeviceReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 		if errors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
 			// For additional cleanup logic use finalizers.
-			logging.Printf("Object not found, return.  Created objects are automatically garbage collected. %s\n", err.Error())
+			logging.Printf("OCFDevice Object not found, return.  Created objects are automatically garbage collected. %s\n", err.Error())
+			//delete related device resources
+			// The object has been deleted, you can get the object's specification
+
 			return ctrl.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
@@ -410,6 +449,30 @@ func (r *OCFDeviceReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *OCFDeviceReconciler) deleteExternalResources(device *iotv1alpha1.OCFDevice) bool {
+	//
+	// delete any external resources associated with the device
+	//
+	// Ensure that delete implementation is idempotent and safe to invoke
+	// multiple times for same object.
+	logging.Printf("DELETING FOR: %s\n", device.Spec.Id)
+	deviceId := device.Spec.Id
+
+	resource := &iotv1alpha1.OCFDeviceResource{}
+	err := r.Get(context.Background(), types.NamespacedName{Name: deviceId + "-ocf-device-resource", Namespace: device.Namespace}, resource)
+	if err != nil {
+		logging.Printf("Error getting resource %s\n", err.Error())
+		return false
+	}
+
+	// we don't care if the job was already deleted
+	if err := r.Delete(context.Background(), resource, client.PropagationPolicy(metav1.DeletePropagationBackground)); client.IgnoreNotFound(err) != nil {
+		logging.Printf("unable to delete active resource %s\n", err.Error())
+		return false
+	}
+	return true
 }
 
 func (r *OCFDeviceReconciler) PeriodicReconcile() {
