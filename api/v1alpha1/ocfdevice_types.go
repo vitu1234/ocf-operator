@@ -31,6 +31,7 @@ const (
 	OCFDeviceRunning    OCFDeviceCurrentStatus = "Running"
 	OCFDeviceError      OCFDeviceCurrentStatus = "Error"
 	OCFDeviceNotFound   OCFDeviceCurrentStatus = "NotFound"
+	OCFDeviceCompleted  OCFDeviceCurrentStatus = "NotFound"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -44,14 +45,13 @@ type OCFDeviceSpec struct {
 	// Foo is an example field of OCFDevice. Edit ocfdevice_types.go to remove/update
 	Id      string `json:"id,omitempty"`
 	Name    string `json:"name,omitempty"`
-	Owned   bool   `json:"owned,omitempty"`
 	OwnerID string `json:"ownerId,omitempty"`
 
-	PreferedResources []PreferedResources `json:"preferredResources,omitempty"`
+	PreferedResources []PreferedResources `json:"preferredResources"`
 }
 
 type PreferedResources struct {
-	Name string `json:"name,omitempty"`
+	Name string `json:"name"`
 }
 
 // OCFDeviceStatus defines the observed state of OCFDevice
@@ -61,12 +61,14 @@ type OCFDeviceStatus struct {
 	Options []Options              `json:"options,omitempty"`
 	Status  OCFDeviceCurrentStatus `json:"status,omitempty"`
 	Message string                 `json:"message,omitempty"`
+	Owned   bool                   `json:"owned"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.status`
 // +kubebuilder:printcolumn:name="Message",type=string,JSONPath=`.status.message`
+// +kubebuilder:printcolumn:name="Owned",type=string,JSONPath=`.status.owned`
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // OCFDevice is the Schema for the ocfdevices API
@@ -83,6 +85,7 @@ type OCFDevice struct {
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.status`
 // +kubebuilder:printcolumn:name="Message",type=string,JSONPath=`.status.message`
+// +kubebuilder:printcolumn:name="Owned",type=string,JSONPath=`.status.owned`
 // +kubebuilder:subresource:status
 // OCFDeviceList contains a list of OCFDevice
 type OCFDeviceList struct {

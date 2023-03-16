@@ -35,9 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/jessevdk/go-flags"
 	iotv1alpha1 "github.com/vitu1234/ocf-operator/api/v1alpha1"
-	OCFClient "github.com/vitu1234/ocf-operator/controllers/ocfclient"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -68,18 +66,7 @@ func (r *OCFDeviceReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 	// TODO(user): your logic here //maybe get things which get changed
 	// Fetch the OCFDevice resource that was modified
 	instance := &iotv1alpha1.OCFDevice{}
-	err := r.Get(context.TODO(), request.NamespacedName, instance)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			// Object not found, return.  Created objects are automatically garbage collected.
-			// For additional cleanup logic use finalizers.
-			logging.Printf("Object not found, return.  Created objects are automatically garbage collected. %s\n", err.Error())
-			return ctrl.Result{}, nil
-		}
-		// Error reading the object - requeue the request.
-		logging.Printf("Error reading the object - requeue the request. %s\n", err.Error())
-		return ctrl.Result{}, err
-	}
+	_ = r.Get(context.TODO(), request.NamespacedName, instance)
 
 	// Define the desired OCFDevice object
 	ocfDevice := &iotv1alpha1.OCFDevice{
@@ -90,7 +77,6 @@ func (r *OCFDeviceReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 		Spec: iotv1alpha1.OCFDeviceSpec{
 			Id:                instance.Spec.Id,
 			Name:              instance.Spec.Name,
-			Owned:             instance.Spec.Owned,
 			OwnerID:           instance.Spec.OwnerID,
 			PreferedResources: instance.Spec.PreferedResources,
 		}, Status: iotv1alpha1.OCFDeviceStatus{
@@ -105,7 +91,7 @@ func (r *OCFDeviceReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 	}
 
 	var old_ocfdevice iotv1alpha1.OCFDevice
-	err = r.Get(context.Background(), types.NamespacedName{Name: ocfDevice.Name, Namespace: ocfDevice.Namespace}, &old_ocfdevice)
+	err := r.Get(context.Background(), types.NamespacedName{Name: ocfDevice.Name, Namespace: ocfDevice.Namespace}, &old_ocfdevice)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -114,298 +100,314 @@ func (r *OCFDeviceReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 	// Check if the Deployment already exists
 	found := &iotv1alpha1.OCFDevice{}
 	err = r.Get(context.Background(), types.NamespacedName{Name: ocfDevice.Name, Namespace: ocfDevice.Namespace}, found)
-	if err == nil {
+	if err == nil && !found.Status.Owned {
 
-		if instance.Spec.Owned || instance.Status.Status == "Running" {
-			logging.Println("DEVICE ALREADY OWNED ")
-		} else {
+		logging.Printf("Creating OCFDevice %s/%s\n", ocfDevice.Namespace, ocfDevice.Name)
 
-			logging.Printf("Creating OCFDevice %s/%s\n", ocfDevice.Namespace, ocfDevice.Name)
+		logging.Println("Discover OCFDevice on the network")
 
-			logging.Println("Discover OCFDevice on the network")
+		found.Status.Status = iotv1alpha1.OCFDeviceDiscovery
+		found.Status.Message = "Discover OCFDevice on the network"
+		r.Client.Status().Update(context.TODO(), found)
 
-			found.Status.Status = iotv1alpha1.OCFDeviceDiscovery
-			found.Status.Message = "Discover OCFDevice on the network"
+		discoveryTimeout := opts.DiscoveryTimeout
+		if discoveryTimeout <= 0 {
+			discoveryTimeout = time.Second * time.Duration(10)
+		}
+
+		res, err := ocf_client.Discover(discoveryTimeout)
+		if err != nil {
+			logging.Printf("Discovering devices has failed : %s\n", err.Error())
+			found.Status.Status = iotv1alpha1.OCFDeviceNotFound
+			found.Status.Message = "Discovering devices has failed, Id not found"
+			err = r.Client.Status().Update(context.TODO(), found)
+			if err != nil {
+				//An error occured updating the resource so requeue
+				return ctrl.Result{}, err
+			}
+
+		}
+
+		// Define a slice of Device struct to hold the JSON array
+		var raw_devices []RawOCFDevice
+
+		// Unmarshal the JSON array to the slice
+		err = json.Unmarshal([]byte(res), &raw_devices)
+		if err != nil {
+			found.Status.Status = iotv1alpha1.OCFDeviceError
 			r.Client.Status().Update(context.TODO(), found)
+			logging.Printf("%s\n", err.Error())
+		}
 
-			discoveryTimeout := opts.DiscoveryTimeout
-			if discoveryTimeout <= 0 {
-				discoveryTimeout = time.Second * time.Duration(10)
-			}
+		//create the device
+		//check number of OCFDevices on the network
+		if len(raw_devices) > 0 {
+			for _, raw_device := range raw_devices {
 
-			res, err := ocf_client.Discover(discoveryTimeout)
-			if err != nil {
-				logging.Printf("Discovering devices has failed : %s\n", err.Error())
-				found.Status.Status = iotv1alpha1.OCFDeviceNotFound
-				found.Status.Message = "Discovering devices has failed, Id not found"
-				err = r.Client.Status().Update(context.TODO(), found)
-				if err != nil {
-					//An error occured updating the resource so requeue
-					return ctrl.Result{}, err
-				}
+				if raw_device.ID == instance.Spec.Id && instance.Spec.Id != "" {
+					//device created | own/onboard it and register its resources in K8s
+					ocf_client.OwnDevice(raw_device.ID)
+					found.Spec.Id = raw_device.ID
+					found.Spec.Name = raw_device.Details.Name
+					found.Status.Owned = raw_device.Owned
+					found.Spec.OwnerID = raw_device.OwnerID
+					r.Client.Update(context.TODO(), found)
+					links_resources, err := ocf_client.GetResources(raw_device.ID)
+					if err != nil {
+						found.Status.Status = iotv1alpha1.OCFDeviceError
+						logging.Printf("Failed to get device resources, DeviceID: %s | Error: %s \n", raw_device.ID, err.Error())
+						r.Client.Status().Update(context.TODO(), found)
 
-			}
+					}
+					//get the resources 1 by 1 and register
+					var raw_device_resources []RawOCFDeviceResource
+					err = json.Unmarshal([]byte(links_resources), &raw_device_resources)
+					if err != nil {
+						found.Status.Status = iotv1alpha1.OCFDeviceError
+						logging.Printf("Processing device resources to json failed, DeviceID: %s | Error: %s \n ", raw_device.ID, err.Error())
+						r.Client.Status().Update(context.TODO(), found)
 
-			// Define a slice of Device struct to hold the JSON array
-			var raw_devices []RawOCFDevice
+					}
+					// Define the Properties array
+					properties := []iotv1alpha1.OCFDeviceResourceProperties{}
 
-			// Unmarshal the JSON array to the slice
-			err = json.Unmarshal([]byte(res), &raw_devices)
-			if err != nil {
-				found.Status.Status = iotv1alpha1.OCFDeviceError
-				r.Client.Status().Update(context.TODO(), found)
-				logging.Printf("%s\n", err.Error())
-			}
+					//get the device resources and store for this device
+					for _, d := range raw_device_resources {
+						resource_properties, err := ocf_client.GetResource(raw_device.ID, d.Href)
+						if err != nil {
+							found.Status.Status = iotv1alpha1.OCFDeviceError
+							found.Status.Message = "Failed to get device resources details: " + raw_device.ID
+							logging.Printf("Failed to get device resources details, DeviceID: %s | Error: %s \n", raw_device.ID, err.Error())
+							r.Client.Status().Update(context.TODO(), found)
+						}
 
-			//create the device
-			//check number of OCFDevices on the network
-			if len(raw_devices) > 0 {
-				for _, raw_device := range raw_devices {
+						//get the resource details 1 by 1 and store in the properties struct
+						var raw_device_resource_properties RawOCFDeviceResourceProperties
 
-					if raw_device.ID == instance.Spec.Id && instance.Spec.Id != "" {
-						//device created | own/onboard it and register its resources in K8s
-						ocf_client.OwnDevice(raw_device.ID)
-						found.Spec.Id = raw_device.ID
-						found.Spec.Name = raw_device.Details.Name
-						found.Spec.Owned = raw_device.Owned
-						found.Spec.OwnerID = raw_device.OwnerID
-						r.Client.Update(context.TODO(), found)
+						err = json.Unmarshal([]byte(resource_properties), &raw_device_resource_properties)
+						if err != nil {
+							logging.Printf("Processing device resource properties to json failed, DeviceID: %s | Error: %s \n ", raw_device.ID, err.Error())
+						}
+
+						//append all the properties
+						newProperty := iotv1alpha1.OCFDeviceResourceProperties{}
+
+						newProperty.Name = d.Href
+
+						if raw_device_resource_properties.Value != nil {
+
+							if strconv.FormatBool(*raw_device_resource_properties.Value) == "true" {
+								newProperty.Value = raw_device_resource_properties.Value
+							} else if strconv.FormatBool(*raw_device_resource_properties.Value) == "false" {
+								newProperty.Value = raw_device_resource_properties.Value
+							} else {
+								newProperty.Value = raw_device_resource_properties.Value
+							}
+
+						}
+
+						if raw_device_resource_properties.Units != "" {
+							newProperty.Units = raw_device_resource_properties.Units
+						}
+
+						if raw_device_resource_properties.Units != "" {
+							newProperty.Temperature = strconv.FormatFloat(raw_device_resource_properties.Temperature, 'f', 2, 64)
+						}
+						properties = append(properties, newProperty)
+
+					}
+
+					//create the device resource
+					// Define the OCFDevice object
+					ocfDeviceResource := &iotv1alpha1.OCFDeviceResource{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      raw_device.ID + "-ocf-device-resource",
+							Namespace: found.Namespace,
+						},
+						Spec: iotv1alpha1.OCFDeviceResourceSpec{
+							DeviceID:   raw_device.ID,
+							Properties: properties,
+						},
+					}
+					err = r.Create(context.Background(), ocfDeviceResource)
+					if err != nil {
+						logging.Printf("failed to create OCFDeviceResource: %s\n, skipping", err.Error())
+						// return
+					}
+
+					found.Status.Status = iotv1alpha1.OCFDeviceRunning
+					found.Status.Owned = true
+					found.Status.Message = "Device registered"
+					r.Client.Status().Update(context.TODO(), found)
+
+				} else {
+
+					//if device ID is not set on Spec.ID, search for the device using prefferedresourcestypes
+					if len(instance.Spec.PreferedResources) > 0 {
+
+						preferredResources := instance.Spec.PreferedResources
+						//get device resources
 						links_resources, err := ocf_client.GetResources(raw_device.ID)
-						if err != nil {
-							found.Status.Status = iotv1alpha1.OCFDeviceError
-							logging.Printf("Failed to get device resources, DeviceID: %s | Error: %s \n", raw_device.ID, err.Error())
-							r.Client.Status().Update(context.TODO(), found)
 
-						}
-						//get the resources 1 by 1 and register
-						var raw_device_resources []RawOCFDeviceResource
-						err = json.Unmarshal([]byte(links_resources), &raw_device_resources)
-						if err != nil {
-							found.Status.Status = iotv1alpha1.OCFDeviceError
-							logging.Printf("Processing device resources to json failed, DeviceID: %s | Error: %s \n ", raw_device.ID, err.Error())
-							r.Client.Status().Update(context.TODO(), found)
-
-						}
-						// Define the Properties array
-						properties := []iotv1alpha1.OCFDeviceResourceProperties{}
-
-						//get the device resources and store for this device
-						for _, d := range raw_device_resources {
-							resource_properties, err := ocf_client.GetResource(raw_device.ID, d.Href)
+						for i := 0; i < len(preferredResources); i++ {
+							//search for a device with the resource until it find one matches
 							if err != nil {
 								found.Status.Status = iotv1alpha1.OCFDeviceError
-								found.Status.Message = "Failed to get device resources details: " + raw_device.ID
-								logging.Printf("Failed to get device resources details, DeviceID: %s | Error: %s \n", raw_device.ID, err.Error())
-								r.Client.Status().Update(context.TODO(), found)
+								found.Status.Message = "Failed searching for device resources: " + err.Error()
+								err = r.Client.Status().Update(context.TODO(), found)
+								if err != nil {
+									//An error occured updating the resource so requeue
+									return ctrl.Result{}, err
+								}
 							}
+							count := strings.Count(links_resources, preferredResources[i].Name)
+							if count > 0 {
+								//onboard this device
+								ocf_client.OwnDevice(raw_device.ID)
+								found.Spec.Id = raw_device.ID
+								found.Spec.Name = raw_device.Details.Name
+								found.Status.Owned = raw_device.Owned
+								found.Spec.OwnerID = raw_device.OwnerID
+								found.Status.Owned = true
+								r.Client.Update(context.TODO(), found)
 
-							//get the resource details 1 by 1 and store in the properties struct
-							var raw_device_resource_properties RawOCFDeviceResourceProperties
+								//get the resources 1 by 1 and register
+								var raw_device_resources []RawOCFDeviceResource
+								err = json.Unmarshal([]byte(links_resources), &raw_device_resources)
+								if err != nil {
+									found.Status.Status = iotv1alpha1.OCFDeviceError
+									logging.Printf("Processing device resources to json failed, DeviceID: %s | Error: %s \n ", raw_device.ID, err.Error())
+									r.Client.Status().Update(context.TODO(), found)
 
-							err = json.Unmarshal([]byte(resource_properties), &raw_device_resource_properties)
-							if err != nil {
-								logging.Printf("Processing device resource properties to json failed, DeviceID: %s | Error: %s \n ", raw_device.ID, err.Error())
-							}
+								}
+								// Define the Properties array
+								properties := []iotv1alpha1.OCFDeviceResourceProperties{}
 
-							//append all the properties
-							newProperty := iotv1alpha1.OCFDeviceResourceProperties{}
+								//get the device resources and store for this device
+								for _, d := range raw_device_resources {
+									resource_properties, err := ocf_client.GetResource(raw_device.ID, d.Href)
+									if err != nil {
+										found.Status.Status = iotv1alpha1.OCFDeviceError
+										found.Status.Message = "Failed to get device resources details: " + raw_device.ID
+										logging.Printf("Failed to get device resources details, DeviceID: %s | Error: %s \n", raw_device.ID, err.Error())
+										r.Client.Status().Update(context.TODO(), found)
 
-							newProperty.Name = d.Href
+									}
 
-							if raw_device_resource_properties.Value != nil {
+									//get the resource details 1 by 1 and store in the properties struct
+									var raw_device_resource_properties RawOCFDeviceResourceProperties
 
-								if strconv.FormatBool(*raw_device_resource_properties.Value) == "true" {
-									newProperty.Value = raw_device_resource_properties.Value
-								} else if strconv.FormatBool(*raw_device_resource_properties.Value) == "false" {
-									newProperty.Value = raw_device_resource_properties.Value
-								} else {
-									newProperty.Value = raw_device_resource_properties.Value
+									err = json.Unmarshal([]byte(resource_properties), &raw_device_resource_properties)
+									if err != nil {
+										logging.Printf("Processing device resource properties to json failed, DeviceID: %s | Error: %s \n ", raw_device.ID, err.Error())
+									}
+
+									//append all the properties
+									newProperty := iotv1alpha1.OCFDeviceResourceProperties{}
+
+									newProperty.Name = d.Href
+
+									if raw_device_resource_properties.Value != nil {
+
+										if strconv.FormatBool(*raw_device_resource_properties.Value) == "true" {
+											newProperty.Value = raw_device_resource_properties.Value
+										} else if strconv.FormatBool(*raw_device_resource_properties.Value) == "false" {
+											newProperty.Value = raw_device_resource_properties.Value
+										} else {
+											newProperty.Value = raw_device_resource_properties.Value
+										}
+
+									}
+
+									if raw_device_resource_properties.Units != "" {
+										newProperty.Units = raw_device_resource_properties.Units
+									}
+
+									if raw_device_resource_properties.Units != "" {
+										newProperty.Temperature = strconv.FormatFloat(raw_device_resource_properties.Temperature, 'f', 2, 64)
+									}
+									properties = append(properties, newProperty)
+
 								}
 
+								//create the device resource
+								// Define the OCFDevice object
+								ocfDeviceResource := &iotv1alpha1.OCFDeviceResource{
+									ObjectMeta: metav1.ObjectMeta{
+										Name:      raw_device.ID + "-ocf-device-resource",
+										Namespace: found.Namespace,
+									},
+									Spec: iotv1alpha1.OCFDeviceResourceSpec{
+										DeviceID:   raw_device.ID,
+										Properties: properties,
+									},
+								}
+								err = r.Create(context.Background(), ocfDeviceResource)
+								if err != nil {
+									logging.Printf("failed to create OCFDeviceResource: %s\n, skipping", err.Error())
+									// return
+								}
+
+								found.Status.Status = iotv1alpha1.OCFDeviceRunning
+								found.Status.Message = "Device registered"
+								found.Status.Owned = true
+								r.Client.Status().Update(context.TODO(), found)
 							}
-
-							if raw_device_resource_properties.Units != "" {
-								newProperty.Units = raw_device_resource_properties.Units
-							}
-
-							if raw_device_resource_properties.Units != "" {
-								newProperty.Temperature = strconv.FormatFloat(raw_device_resource_properties.Temperature, 'f', 2, 64)
-							}
-							properties = append(properties, newProperty)
-
 						}
-
-						//create the device resource
-						// Define the OCFDevice object
-						ocfDeviceResource := &iotv1alpha1.OCFDeviceResource{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      raw_device.ID + "-ocf-device-resource",
-								Namespace: found.Namespace,
-							},
-							Spec: iotv1alpha1.OCFDeviceResourceSpec{
-								DeviceID:   raw_device.ID,
-								Properties: properties,
-							},
-						}
-						err = r.Create(context.Background(), ocfDeviceResource)
-						if err != nil {
-							logging.Printf("failed to create OCFDeviceResource: %s\n, skipping", err.Error())
-							// return
-						}
-
-						found.Status.Status = iotv1alpha1.OCFDeviceRunning
-						found.Status.Message = "Device registered"
-						r.Client.Status().Update(context.TODO(), found)
 
 					} else {
 
-						//if device ID is not set on Spec.ID, search for the device using prefferedresourcestypes
-						if len(instance.Spec.PreferedResources) > 0 {
+						found.Status.Status = iotv1alpha1.OCFDeviceError
+						found.Status.Message = "No OCFDevices found on the network matching the provided Spec.Id or Spec.preferredResources"
+						r.Client.Status().Update(context.TODO(), found)
 
-							preferredResources := instance.Spec.PreferedResources
-							//get device resources
-							links_resources, err := ocf_client.GetResources(raw_device.ID)
-
-							for i := 0; i < len(preferredResources); i++ {
-								//search for a device with the resource until it find one matches
-								if err != nil {
-									found.Status.Status = iotv1alpha1.OCFDeviceError
-									found.Status.Message = "Failed searching for device resources: " + err.Error()
-									err = r.Client.Status().Update(context.TODO(), found)
-									if err != nil {
-										//An error occured updating the resource so requeue
-										return ctrl.Result{}, err
-									}
-								}
-								count := strings.Count(links_resources, preferredResources[i].Name)
-								if count > 0 {
-									//onboard this device
-									ocf_client.OwnDevice(raw_device.ID)
-									found.Spec.Id = raw_device.ID
-									found.Spec.Name = raw_device.Details.Name
-									found.Spec.Owned = raw_device.Owned
-									found.Spec.OwnerID = raw_device.OwnerID
-									r.Client.Update(context.TODO(), found)
-
-									if err != nil {
-										found.Status.Status = iotv1alpha1.OCFDeviceError
-										logging.Printf("Failed to get device resources, DeviceID: %s | Error: %s \n", raw_device.ID, err.Error())
-										r.Client.Status().Update(context.TODO(), found)
-
-									}
-									//get the resources 1 by 1 and register
-									var raw_device_resources []RawOCFDeviceResource
-									err = json.Unmarshal([]byte(links_resources), &raw_device_resources)
-									if err != nil {
-										found.Status.Status = iotv1alpha1.OCFDeviceError
-										logging.Printf("Processing device resources to json failed, DeviceID: %s | Error: %s \n ", raw_device.ID, err.Error())
-										r.Client.Status().Update(context.TODO(), found)
-
-									}
-									// Define the Properties array
-									properties := []iotv1alpha1.OCFDeviceResourceProperties{}
-
-									//get the device resources and store for this device
-									for _, d := range raw_device_resources {
-										resource_properties, err := ocf_client.GetResource(raw_device.ID, d.Href)
-										if err != nil {
-											found.Status.Status = iotv1alpha1.OCFDeviceError
-											found.Status.Message = "Failed to get device resources details: " + raw_device.ID
-											logging.Printf("Failed to get device resources details, DeviceID: %s | Error: %s \n", raw_device.ID, err.Error())
-											r.Client.Status().Update(context.TODO(), found)
-
-										}
-
-										//get the resource details 1 by 1 and store in the properties struct
-										var raw_device_resource_properties RawOCFDeviceResourceProperties
-
-										err = json.Unmarshal([]byte(resource_properties), &raw_device_resource_properties)
-										if err != nil {
-											logging.Printf("Processing device resource properties to json failed, DeviceID: %s | Error: %s \n ", raw_device.ID, err.Error())
-										}
-
-										//append all the properties
-										newProperty := iotv1alpha1.OCFDeviceResourceProperties{}
-
-										newProperty.Name = d.Href
-
-										if raw_device_resource_properties.Value != nil {
-
-											if strconv.FormatBool(*raw_device_resource_properties.Value) == "true" {
-												newProperty.Value = raw_device_resource_properties.Value
-											} else if strconv.FormatBool(*raw_device_resource_properties.Value) == "false" {
-												newProperty.Value = raw_device_resource_properties.Value
-											} else {
-												newProperty.Value = raw_device_resource_properties.Value
-											}
-
-										}
-
-										if raw_device_resource_properties.Units != "" {
-											newProperty.Units = raw_device_resource_properties.Units
-										}
-
-										if raw_device_resource_properties.Units != "" {
-											newProperty.Temperature = strconv.FormatFloat(raw_device_resource_properties.Temperature, 'f', 2, 64)
-										}
-										properties = append(properties, newProperty)
-
-									}
-
-									//create the device resource
-									// Define the OCFDevice object
-									ocfDeviceResource := &iotv1alpha1.OCFDeviceResource{
-										ObjectMeta: metav1.ObjectMeta{
-											Name:      raw_device.ID + "-ocf-device-resource",
-											Namespace: found.Namespace,
-										},
-										Spec: iotv1alpha1.OCFDeviceResourceSpec{
-											DeviceID:   raw_device.ID,
-											Properties: properties,
-										},
-									}
-									err = r.Create(context.Background(), ocfDeviceResource)
-									if err != nil {
-										logging.Printf("failed to create OCFDeviceResource: %s\n, skipping", err.Error())
-										// return
-									}
-
-									found.Status.Status = iotv1alpha1.OCFDeviceRunning
-									found.Status.Message = "Device registered"
-									r.Client.Status().Update(context.TODO(), found)
-								}
-							}
-
-						} else {
-
-							found.Status.Status = iotv1alpha1.OCFDeviceError
-							found.Status.Message = "No OCFDevices found on the network matching the provided Spec.Id or Spec.preferredResources"
-							r.Client.Status().Update(context.TODO(), found)
-
-						}
 					}
-
 				}
 
-			} else {
-				found.Status.Status = iotv1alpha1.OCFDeviceError
-				found.Status.Message = "No OCFDevices un-onboarded found on the network"
-				logging.Println("No OCFDevices un-onboarded found on the network")
-				err = r.Client.Status().Update(context.TODO(), found)
-				if err != nil {
-					//An error occured updating the resource so requeue
-					return ctrl.Result{}, err
-				}
+			}
+
+		} else {
+			found.Status.Status = iotv1alpha1.OCFDeviceError
+			found.Status.Message = "No OCFDevices un-onboarded found on the network"
+			logging.Println("No OCFDevices un-onboarded found on the network")
+			err = r.Client.Status().Update(context.TODO(), found)
+			if err != nil {
+				//An error occured updating the resource so requeue
+				return ctrl.Result{}, err
 			}
 		}
 
 	} else if err != nil {
-		logging.Printf("Error |: %s\n", err.Error())
+		if errors.IsNotFound(err) {
+			// Object not found, return.  Created objects are automatically garbage collected.
+			// For additional cleanup logic use finalizers.
+			logging.Printf("Object not found, return.  Created objects are automatically garbage collected. %s\n", err.Error())
+			return ctrl.Result{}, nil
+		}
+		// Error reading the object - requeue the request.
+		logging.Printf("Error reading the object - requeue the request. %s\n", err.Error())
 		return ctrl.Result{}, err
 	}
 
 	// perfom update action
-	r.UpdateAction(ctx, request, *instance)
+	if found.ObjectMeta.Generation > 1 {
+		if found.Status.Owned {
+			logging.Println("Device is Owned is true ")
+			if found.Spec.Id != "" {
+				//onboard device or reconcile
+				return ctrl.Result{}, nil
+			}
+		}
+
+		if !found.Status.Owned {
+			logging.Println("Device is Owned is false ")
+			found.Spec.Id = ""
+			found.Spec.Name = ""
+			found.Spec.OwnerID = ""
+			found.Status.Status = iotv1alpha1.OCFDeviceCompleted
+			//dete device resources
+		}
+	}
 
 	return ctrl.Result{}, nil
 }
@@ -416,23 +418,6 @@ func (r *OCFDeviceReconciler) PeriodicReconcile() {
 	defer ticker.Stop()
 
 	//get ocfdeviceboarding resource and get the set values
-
-	//OCF DEVICE DISCOVERY HERE
-	var opts iotv1alpha1.Options
-	parser := flags.NewParser(&opts, flags.Default)
-	_, err := parser.Parse()
-	if err != nil {
-		logging.Println("Parsing command options has failed : " + err.Error())
-	}
-
-	OCFClient.ReadCommandOptions(opts)
-
-	// Create OCF Client
-	ocf_client := OCFClient.OCFClient{}
-	err = ocf_client.Initialize()
-	if err != nil {
-		fmt.Println("OCF Client has failed to initialize : " + err.Error())
-	}
 
 	for {
 		select {
@@ -494,11 +479,11 @@ func (r *OCFDeviceReconciler) PeriodicReconcile() {
 								Spec: iotv1alpha1.OCFDeviceSpec{
 									Id:      raw_device.ID,
 									Name:    raw_device.Details.Name,
-									Owned:   raw_device.Owned,
 									OwnerID: raw_device.OwnerID,
 								},
 								Status: iotv1alpha1.OCFDeviceStatus{
 									Status: iotv1alpha1.OCFDeviceCreating,
+									Owned:  raw_device.Owned,
 								},
 							}
 
@@ -632,8 +617,11 @@ func (r *OCFDeviceReconciler) PeriodicReconcile() {
 	// return ctrl.Result{}, nil
 }
 
+func (r *OCFDeviceReconciler) OCFDeviceOnboard() {}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *OCFDeviceReconciler) SetupWithManager(mgr ctrl.Manager) error {
+
 	if err := ctrl.NewControllerManagedBy(mgr).
 		For(&iotv1alpha1.OCFDevice{}).
 		// Watches(
@@ -642,7 +630,9 @@ func (r *OCFDeviceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		// ).
 		// Register the Reconcile() method for Create and Update events
 		Watches(
-			&source.Kind{Type: &iotv1alpha1.OCFDevice{}}, &handler.EnqueueRequestForObject{}).
+			&source.Kind{Type: &iotv1alpha1.OCFDevice{}},
+			&handler.EnqueueRequestForObject{}).
+
 		// Register the PeriodicReconcile() method for periodic reconciliation
 		Owns(&iotv1alpha1.OCFDevice{}).
 		Complete(r); err != nil {
@@ -652,62 +642,6 @@ func (r *OCFDeviceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	go r.PeriodicReconcile()
 
 	return nil
-}
-
-func (r *OCFDeviceReconciler) UpdateAction(ctx context.Context, request ctrl.Request, ocfDevice iotv1alpha1.OCFDevice) (ctrl.Result, error) {
-
-	if ocfDevice.ObjectMeta.Generation != 1 {
-		// The resource was updated
-
-		//if false, disown the device
-		if ocfDevice.Spec.Owned {
-			r.updateOwnDeviceAction(ctx, request, ocfDevice)
-		} else {
-			r.updateDisownDeviceAction(ctx, request, ocfDevice)
-		}
-	}
-
-	return ctrl.Result{}, nil
-}
-
-func (r *OCFDeviceReconciler) updateOwnDeviceAction(ctx context.Context, request ctrl.Request, ocfDevice iotv1alpha1.OCFDevice) (ctrl.Result, error) {
-
-	// ocf_device_id := ocfDevice.Spec.Id
-
-	//get related device resources
-
-	return ctrl.Result{}, nil
-}
-
-func (r *OCFDeviceReconciler) updateDisownDeviceAction(ctx context.Context, request ctrl.Request, ocfDevice iotv1alpha1.OCFDevice) (ctrl.Result, error) {
-
-	// ocf_device_id := ocfDevice.Spec.Id
-
-	// //get related device resources
-	// myDeviceBoardingResource := &iotv1alpha1.OCFDeviceResource{}
-
-	// if err := r.Client.Get(ctx, req.NamespacedName, myDeviceBoardingResource); err != nil {
-	// 	if apierrors.IsNotFound(err) {
-	// 		// The resource was deleted
-	// 		fmt.Println("Resource deleted", "name", req.Name, "namespace", req.Namespace)
-	// 		return ctrl.Result{}, nil
-	// 	}
-
-	// 	// An error occurred while trying to retrieve the resource
-	// 	fmt.Println(err, "Failed to retrieve resource", "name", req.Name, "namespace", req.Namespace)
-	// 	return ctrl.Result{}, err
-	// }
-
-	// if myDeviceBoardingResource.ObjectMeta.Generation == 1 {
-	// 	// The resource was just created
-	// 	fmt.Println("Resource created", "name", req.Name, "namespace", req.Namespace)
-	// } else {
-	// 	// The resource was updated
-	// 	fmt.Println("Resource updated", "name", req.Name, "namespace", req.Namespace)
-	// }
-
-	return ctrl.Result{}, nil
-
 }
 
 // structure of a discovered OCF device

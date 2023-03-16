@@ -22,6 +22,9 @@ spec:
     - jsonPath: .status.message
       name: Message
       type: string
+    - jsonPath: .status.owned
+      name: Owned
+      type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
@@ -51,8 +54,6 @@ spec:
                 type: string
               name:
                 type: string
-              owned:
-                type: boolean
               ownerId:
                 type: string
               preferredResources:
@@ -60,8 +61,12 @@ spec:
                   properties:
                     name:
                       type: string
+                  required:
+                  - name
                   type: object
                 type: array
+            required:
+            - preferredResources
             type: object
           status:
             description: OCFDeviceStatus defines the observed state of OCFDevice
@@ -105,8 +110,12 @@ spec:
                       type: string
                   type: object
                 type: array
+              owned:
+                type: boolean
               status:
                 type: string
+            required:
+            - owned
             type: object
         type: object
     served: true
