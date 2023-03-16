@@ -24,12 +24,12 @@ import (
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 // OCFDeviceResourcesSpec defines the desired state of OCFDeviceResources
-type OCFDeviceResourcesSpec struct {
+type OCFDeviceResourceSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// DeviceID is the OCFDevice this resource belongs to
-	DeviceID   string                        `json:"deviceId"`
+	DeviceID   string                        `json:"deviceId" protobuf:"bytes,1,opt,name=deviceId"  kubebuilder:"index"`
 	Properties []OCFDeviceResourceProperties `json:"properties"`
 }
 
@@ -41,32 +41,36 @@ type OCFDeviceResourceProperties struct {
 }
 
 // OCFDeviceResourcesStatus defines the observed state of OCFDeviceResources
-type OCFDeviceResourcesStatus struct {
+type OCFDeviceResourceStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="deviceId",type=string,JSONPath=`.spec.deviceId`
 
 // OCFDeviceResources is the Schema for the ocfdeviceresources API
-type OCFDeviceResources struct {
+type OCFDeviceResource struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   OCFDeviceResourcesSpec   `json:"spec,omitempty"`
-	Status OCFDeviceResourcesStatus `json:"status,omitempty"`
+	Spec   OCFDeviceResourceSpec   `json:"spec,omitempty"`
+	Status OCFDeviceResourceStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
-
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:scope=Namespaced
+// +kubebuilder:printcolumn:name="deviceId",type=string,JSONPath=`.spec.deviceId`
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // OCFDeviceResourcesList contains a list of OCFDeviceResources
-type OCFDeviceResourcesList struct {
+type OCFDeviceResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []OCFDeviceResources `json:"items"`
+	Items           []OCFDeviceResource `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&OCFDeviceResources{}, &OCFDeviceResourcesList{})
+	SchemeBuilder.Register(&OCFDeviceResource{}, &OCFDeviceResourceList{})
 }

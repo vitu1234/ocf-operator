@@ -8,6 +8,32 @@ rules:
 - apiGroups:
   - iot.iot.dev
   resources:
+  - OCFDeviceResource
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - iot.iot.dev
+  resources:
+  - OCFDeviceResource/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - iot.iot.dev
+  resources:
+  - OCFDeviceResource/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - iot.iot.dev
+  resources:
   - ocfdeviceboardings
   verbs:
   - create
@@ -27,32 +53,6 @@ rules:
   - iot.iot.dev
   resources:
   - ocfdeviceboardings/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - iot.iot.dev
-  resources:
-  - ocfdeviceresources
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - iot.iot.dev
-  resources:
-  - ocfdeviceresources/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - iot.iot.dev
-  resources:
-  - ocfdeviceresources/status
   verbs:
   - get
   - patch

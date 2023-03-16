@@ -103,11 +103,11 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "OCFDeviceBoarding")
 		os.Exit(1)
 	}
-	if err = (&controllers.OCFDeviceResourcesReconciler{
+	if err = (&controllers.OCFDeviceResourceReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "OCFDeviceResources")
+		setupLog.Error(err, "unable to create controller", "controller", "OCFDeviceResource")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

@@ -12,6 +12,7 @@ require (
 )
 
 require (
+	github.com/766b/go-outliner v0.0.0-20180511142203-fc6edecdadd7 // indirect
 	github.com/dsnet/golib/memfile v1.0.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.4.0 // indirect
 	github.com/golang-jwt/jwt/v4 v4.4.3 // indirect
