@@ -472,6 +472,10 @@ func (r *OCFDeviceReconciler) deleteExternalResources(device *iotv1alpha1.OCFDev
 		logging.Printf("unable to delete active resource %s\n", err.Error())
 		return false
 	}
+
+	//disown device
+	ocf_client.DisownDevice(deviceId)
+
 	return true
 }
 
