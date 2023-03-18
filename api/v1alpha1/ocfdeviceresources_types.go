@@ -34,7 +34,7 @@ type OCFDeviceResourceSpec struct {
 }
 
 type OCFDeviceResourceProperties struct {
-	Name        string `json:"name,omitempty"` //this is the href for the resource
+	Link        string `json:"link,omitempty"` //this is the href for the resource
 	Value       *bool  `json:"value,omitempty"`
 	Units       string `json:"units,omitempty"`
 	Temperature string `json:"temperature,omitempty"`
@@ -48,7 +48,7 @@ type OCFDeviceResourceStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="deviceId",type=string,JSONPath=`.spec.deviceId`
+// kubebuilder:printcolumn:name="deviceId",type=string,JSONPath=`.spec.deviceId`
 
 // OCFDeviceResources is the Schema for the ocfdeviceresources API
 type OCFDeviceResource struct {
@@ -62,7 +62,7 @@ type OCFDeviceResource struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Namespaced
-// +kubebuilder:printcolumn:name="deviceId",type=string,JSONPath=`.spec.deviceId`
+// kubebuilder:printcolumn:name="deviceId",type=string,JSONPath=`.spec.deviceId`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // OCFDeviceResourcesList contains a list of OCFDeviceResources
 type OCFDeviceResourceList struct {

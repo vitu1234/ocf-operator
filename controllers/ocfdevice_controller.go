@@ -62,6 +62,7 @@ func (r *OCFDeviceReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 	_ = log.FromContext(ctx)
 
 	logging.Println("OCFDevice Controller")
+
 	// ocf_client.DisownDevice("7e2b109e-7452-4e9b-4102-b25b754a4d0c")
 	// TODO(user): your logic here //maybe get things which get changed
 	// Fetch the OCFDevice resource that was modified
@@ -228,7 +229,7 @@ func (r *OCFDeviceReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 						//append all the properties
 						newProperty := iotv1alpha1.OCFDeviceResourceProperties{}
 
-						newProperty.Name = d.Href
+						newProperty.Link = d.Href
 
 						if raw_device_resource_properties.Value != nil {
 
@@ -341,7 +342,7 @@ func (r *OCFDeviceReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 									//append all the properties
 									newProperty := iotv1alpha1.OCFDeviceResourceProperties{}
 
-									newProperty.Name = d.Href
+									newProperty.Link = d.Href
 
 									if raw_device_resource_properties.Value != nil {
 
@@ -607,7 +608,7 @@ func (r *OCFDeviceReconciler) PeriodicReconcile() {
 										//append all the properties
 										newProperty := iotv1alpha1.OCFDeviceResourceProperties{}
 
-										newProperty.Name = d.Href
+										newProperty.Link = d.Href
 
 										if raw_device_resource_properties.Value != nil {
 
