@@ -113,12 +113,40 @@ func (r *OCFDeviceResourceReconciler) Reconcile(ctx context.Context, req ctrl.Re
 					// }
 					// println("RES: ", res)
 
-					err = ocf_client.UpdateResource(myDeviceResource.Spec.DeviceID, row_link, dataBytes)
+					err = ocf_client.UpdateResource(myDeviceResource.Spec.DeviceID, row_link, data)
 					if err != nil {
 						fmt.Printf("FAILED PUBLISH TO DEVICE: %s\n", err.Error())
 					} else {
 						log.Log.Info("PUBLISHED TRUE")
 					}
+				} else {
+					jsonString := "{\"value\": false}"
+					// jsonString := "{\"" + key + "\": " + value + "}"
+					var data interface{}
+					err := json.Decode([]byte(jsonString), &data)
+					if err != nil {
+						println("\nDecoding resource property has failed : " + err.Error())
+						break
+					}
+					dataBytes, err := json.Encode(data)
+					if err != nil {
+						println("\nEncoding resource property has failed : " + err.Error())
+						break
+					}
+					println("\nProperty data to update : " + string(dataBytes) + " LINK: " + row_link)
+					// res, err := ocf_client.GetResource(myDeviceResource.Spec.DeviceID, row_link)
+					// if err != nil {
+					// 	println("RES FAILED: ", err.Error())
+					// }
+					// println("RES: ", res)
+
+					err = ocf_client.UpdateResource(myDeviceResource.Spec.DeviceID, row_link, data)
+					if err != nil {
+						fmt.Printf("FAILED PUBLISH TO DEVICE: %s\n", err.Error())
+					} else {
+						log.Log.Info("PUBLISHED FALSE")
+					}
+
 				}
 			}
 
