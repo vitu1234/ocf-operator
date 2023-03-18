@@ -207,8 +207,8 @@ func (c *OCFClient) UpdateResource(deviceID string, href string, data interface{
 	ctx, cancel := context.WithTimeout(context.Background(), Timeout)
 	defer cancel()
 
-	opts := []local.UpdateOption{local.WithInterface(interfaces.OC_IF_RW)}
-	return c.client.UpdateResource(ctx, deviceID, href, data, nil, opts...)
+	// opts := []local.UpdateOption{local.WithInterface(interfaces.OC_IF_BASELINE)}
+	return c.client.UpdateResource(ctx, deviceID, href, data, nil)
 }
 
 // DisownDevice removes the current ownership
