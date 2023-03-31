@@ -35,4 +35,13 @@ resources:
   kind: OCFDeviceResources
   path: github.com/vitu1234/ocf-operator/api/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: iot.dev
+  group: iot
+  kind: Automation
+  path: github.com/vitu1234/ocf-operator/api/v1alpha1
+  version: v1alpha1
 version: "3"

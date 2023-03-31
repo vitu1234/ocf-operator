@@ -1,0 +1,34 @@
+apiVersion: iot.iot.dev/v1alpha1
+kind: Automation
+metadata:
+  labels:
+    app.kubernetes.io/name: automation
+    app.kubernetes.io/instance: automation-sample
+    app.kubernetes.io/part-of: ocf-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: ocf-operator
+  name: automation-sample
+spec:
+  trigger:
+    inputtype: numeric
+    ondevice: deviceID
+    forresource: /temperature
+    max: 20
+    min: 19
+    period:
+      hours: 1
+      minutes: 3
+      seconds: 10
+  action:
+    - type: message
+      data: 
+        - message: "Temperature threshold trigger"
+          email: "vitumafeni@dcn.ssu.ac.kr"
+    - type: event 
+      data:
+        - targetdevice: targetDeviceID
+          targetresource: /light1
+          value: true
+          period:
+            hours: 1
+          
