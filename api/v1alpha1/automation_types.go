@@ -73,15 +73,15 @@ type Trigger struct {
 	From       string `json:"from,omitempty"`       //  From: indicates that a trigger is set if the state changes
 	At         string `json:"at,omitempty"`         // specifies the time trigger an action
 	TimeFormat string `json:"timeformat,omitempty"` // whether to use 12hr or 24hr time format
-	Max        int64  `json:"max,omitempty"`        // max&min: are available for the numeric type. Determines threshold for an automation
-	Min        int64  `json:"min,omitempty"`
+	Max        *int64 `json:"max,omitempty"`        // max&min: are available for the numeric type. Determines threshold for an automation
+	Min        *int64 `json:"min,omitempty"`
 	Period     Period `json:"period,omitempty"` // Period: If given, will trigger when the condition has been true for X time
 }
 
 type Period struct {
-	Hours   int64 `json:"hours,omitempty"`
-	Minutes int64 `json:"minutes,omitempty"`
-	Seconds int64 `json:"seconds,omitempty"`
+	Hours   *int64 `json:"hours,omitempty"`
+	Minutes *int64 `json:"minutes,omitempty"`
+	Seconds *int64 `json:"seconds,omitempty"`
 }
 
 type Data struct {

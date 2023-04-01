@@ -10,7 +10,7 @@ metadata:
   name: automation-sample
 spec:
   trigger:
-    inputtype: numeric
+    inputtype: Numeric
     ondevice: deviceID
     forresource: /temperature
     max: 20
@@ -20,11 +20,11 @@ spec:
       minutes: 3
       seconds: 10
   action:
-    - type: message
+    - type: Message
       data: 
         - message: "Temperature threshold trigger"
           email: "vitumafeni@dcn.ssu.ac.kr"
-    - type: event 
+    - type: Event 
       data:
         - targetdevice: targetDeviceID
           targetresource: /light1
