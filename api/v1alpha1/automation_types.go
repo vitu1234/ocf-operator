@@ -69,13 +69,13 @@ type Trigger struct {
 	OnDevice    string              `json:"ondevice"`    //ondevice: Indicates the device which will be sending the values
 	ForResource string              `json:"forresource"` // Forresource: Indicates which resource on the device is exposed with that data
 
-	To         string `json:"to,omitempty"`         //  To: indicates that a trigger is set if the state changes to a particular defined state
-	From       string `json:"from,omitempty"`       //  From: indicates that a trigger is set if the state changes
-	At         string `json:"at,omitempty"`         // specifies the time trigger an action
-	TimeFormat string `json:"timeformat,omitempty"` // whether to use 12hr or 24hr time format
-	Max        *int64 `json:"max,omitempty"`        // max&min: are available for the numeric type. Determines threshold for an automation
-	Min        *int64 `json:"min,omitempty"`
-	Period     Period `json:"period,omitempty"` // Period: If given, will trigger when the condition has been true for X time
+	To         string   `json:"to,omitempty"`         //  To: indicates that a trigger is set if the state changes to a particular defined state
+	From       string   `json:"from,omitempty"`       //  From: indicates that a trigger is set if the state changes
+	At         string   `json:"at,omitempty"`         // specifies the time trigger an action
+	TimeFormat string   `json:"timeformat,omitempty"` // whether to use 12hr or 24hr time format
+	Max        *float64 `json:"max,omitempty"`        // max&min: are available for the numeric type. Determines threshold for an automation
+	Min        *float64 `json:"min,omitempty"`
+	Period     Period   `json:"period,omitempty"` // Period: If given, will trigger when the condition has been true for X time
 }
 
 type Period struct {
