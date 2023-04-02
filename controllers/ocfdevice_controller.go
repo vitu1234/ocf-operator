@@ -248,7 +248,7 @@ func (r *OCFDeviceReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 						}
 
 						if raw_device_resource_properties.Units != "" {
-							newProperty.Temperature = strconv.FormatFloat(raw_device_resource_properties.Temperature, 'f', 2, 64)
+							newProperty.Measurement = strconv.FormatFloat(*raw_device_resource_properties.Measurement, 'f', 2, 64)
 						}
 						properties = append(properties, newProperty)
 
@@ -361,7 +361,7 @@ func (r *OCFDeviceReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 									}
 
 									if raw_device_resource_properties.Units != "" {
-										newProperty.Temperature = strconv.FormatFloat(raw_device_resource_properties.Temperature, 'f', 2, 64)
+										newProperty.Measurement = strconv.FormatFloat(*raw_device_resource_properties.Measurement, 'f', 2, 64)
 									}
 									properties = append(properties, newProperty)
 
@@ -627,7 +627,7 @@ func (r *OCFDeviceReconciler) PeriodicReconcile() {
 										}
 
 										if raw_device_resource_properties.Units != "" {
-											newProperty.Temperature = strconv.FormatFloat(raw_device_resource_properties.Temperature, 'f', 2, 64)
+											newProperty.Measurement = strconv.FormatFloat(*raw_device_resource_properties.Measurement, 'f', 2, 64)
 										}
 										properties = append(properties, newProperty)
 
@@ -741,5 +741,5 @@ type RawOCFDeviceResourceProperties struct {
 	Name        string   `json:"name"`
 	Value       *bool    `json:"value"`
 	Units       string   `json:"units"`
-	Temperature float64  `json:"temperature"`
+	Measurement *float64 `json:"Measurement"`
 }

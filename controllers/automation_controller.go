@@ -24,6 +24,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -64,13 +65,13 @@ func (r *AutomationReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	if err := r.Client.Get(ctx, req.NamespacedName, myAutomation); err != nil {
 		if apierrors.IsNotFound(err) {
 			// The resource was deleted
-			log.Log.Info("Automation deleted", "name", req.Name, "namespace", req.Namespace)
-			return ctrl.Result{}, nil
+			log.Log.Error(err, err.Error(), " Automation deleted", "name", req.Name, "namespace", req.Namespace)
+			return ctrl.Result{Requeue: true}, nil
 		}
 
 		// An error occurred while trying to retrieve the resource
 		log.Log.Error(err, "Automation retrieve retrieving failed", "name", req.Name, "namespace", req.Namespace)
-		return ctrl.Result{}, err
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	trigger := myAutomation.Spec.Trigger
@@ -80,7 +81,8 @@ func (r *AutomationReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	//get device resource data
 	res, err := ocf_client.GetResource(trigger_device_id, trigger_resource)
 	if err != nil {
-		log.Log.Info("Automation Failed to get device resouce : ", err.Error())
+		log.Log.Error(err, err.Error(), " Automation Failed to get device resource : ", err.Error())
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	//get the resource details 1 by 1 and store in the properties struct
@@ -88,7 +90,8 @@ func (r *AutomationReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	err = json.Unmarshal([]byte(res), &raw_device_resource_property)
 	if err != nil {
-		log.Log.Info("Automation Failed to convert resource property: ", err.Error())
+		log.Log.Error(err, err.Error(), " Automation Failed to convert resource property: ", err.Error())
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	myDeviceResource := &iotv1alpha1.OCFDeviceResource{
@@ -98,10 +101,10 @@ func (r *AutomationReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		},
 	}
 
-	if err := r.Client.Get(ctx, req.NamespacedName, myDeviceResource); err != nil {
+	if err := r.Get(ctx, types.NamespacedName{Name: trigger_device_id + "-ocf-device-resource", Namespace: req.Namespace}, myDeviceResource); err != nil {
 		if apierrors.IsNotFound(err) {
 			// The resource was deleted
-			log.Log.Info("Automation Resource not found/deleted in namespace", "name", req.Name, "namespace", req.Namespace)
+			log.Log.Error(err, " Automation Resource not found/deleted in namespace", "name", req.Name, "namespace", req.Namespace)
 			return ctrl.Result{Requeue: true}, nil
 		}
 
@@ -110,9 +113,33 @@ func (r *AutomationReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, err
 	}
 
+	//get the units for measurement
+	key := ""
+	for _, d := range myDeviceResource.Spec.Properties {
+		if d.Link == trigger_resource {
+			if d.Measurement != "" {
+				// measurement = d.Measurement
+				key = "measurement"
+			}
+			if d.Value != nil {
+				// measurement = strconv.FormatBool(*d.Value)
+				key = "value"
+			}
+		}
+	}
+
+	fmt.Println(key)
+
 	switch trigger.InputType {
 	case "Numeric":
 		log.Log.Info("Numeric type")
+		// if raw_device_resource_property.Measurement != nil {
+
+		// }
+		if raw_device_resource_property.Measurement != nil {
+			log.Log.Info("Measurement nwow: ", *raw_device_resource_property.Measurement)
+
+		}
 
 		//check if max/minimum is set
 		if trigger.Max != nil {

@@ -11,7 +11,7 @@ metadata:
 spec:
   trigger:
     inputtype: Numeric
-    ondevice: deviceID
+    ondevice: 295ece66-757e-4a2e-596a-06ddd1c0b988
     forresource: /temperature
     max: 20
     min: 19
@@ -26,8 +26,8 @@ spec:
           email: "vitumafeni@dcn.ssu.ac.kr"
     - type: Event 
       data:
-        - targetdevice: targetDeviceID
-          targetresource: /light1
+        - targetdevice: 295ece66-757e-4a2e-596a-06ddd1c0b988
+          targetresource: /switch1
           value: true
           period:
             hours: 1
