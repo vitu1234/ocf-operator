@@ -31,7 +31,7 @@ const (
 	OCFDeviceRunning    OCFDeviceCurrentStatus = "Running"
 	OCFDeviceError      OCFDeviceCurrentStatus = "Error"
 	OCFDeviceNotFound   OCFDeviceCurrentStatus = "NotFound"
-	OCFDeviceCompleted  OCFDeviceCurrentStatus = "NotFound"
+	OCFDeviceCompleted  OCFDeviceCurrentStatus = "Completed"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!

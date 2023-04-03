@@ -37,7 +37,7 @@ type OCFDeviceResourceProperties struct {
 	Link        string `json:"link,omitempty"` //this is the href for the resource
 	Value       *bool  `json:"value,omitempty"`
 	Units       string `json:"units,omitempty"`
-	Temperature string `json:"temperature,omitempty"`
+	Measurement string `json:"measurement,omitempty"`
 }
 
 // OCFDeviceResourcesStatus defines the observed state of OCFDeviceResources

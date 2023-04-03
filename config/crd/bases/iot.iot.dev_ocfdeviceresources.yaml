@@ -43,7 +43,7 @@ spec:
                   properties:
                     link:
                       type: string
-                    temperature:
+                    measurement:
                       type: string
                     units:
                       type: string
